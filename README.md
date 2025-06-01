@@ -7,8 +7,6 @@ Download the [latest .zip file](https://github.com/diddyholz/CPDoom/releases) an
 ├── run.bin (Hollyhock launcher)
 ├── CPDoom.bin (Main CPDoom executable)
 └── CPDoom/
-    ├── bin/
-    |   └── main.bin
     └── wad/
         ├── doom1.wad (The included shareware version of doom)
         └── ** Put other wads in here **
