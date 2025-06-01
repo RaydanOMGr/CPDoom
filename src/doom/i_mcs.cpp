@@ -1,12 +1,9 @@
-#include <sdk/os/mcs.hpp>
+#include <cstdlib>
+#include <sdk/os/mcs.h>
+#include <sdk/os/debug.h>
+#include "../helpers/macros.h"
 
 #include "stdio.h"
-
-// Dummy define, so that editor does not annoy me
-// Set the actual appname in makefile
-#ifndef APPNAME_STRING
-#define APPNAME_STRING ""
-#endif
 
 #define MCS_DIRECTORY APPNAME_STRING
 
@@ -24,7 +21,19 @@ extern "C"
 void
 I_McsInit(void)
 {
-    MCS_CreateFolder(MCS_DIRECTORY, nullptr); 
+    auto ret = MCS_CreateFolder(MCS_DIRECTORY, nullptr);
+    switch (ret)
+    {
+        case MCS_OK:
+        case MCS_FOLDER_EXISTS:
+        return;
+
+        default:
+        break;
+    }
+    fprintf(stderr, "Could not create MCS folder \"%s\": %i", MCS_DIRECTORY, ret);
+    Debug_WaitKey();
+    exit(EXIT_FAILURE);
 }
 
 extern "C"
@@ -51,7 +60,7 @@ I_McsRead(const char *name,
     void **data, 
     uint32_t *size)
 {
-    uint8_t vartype;
+    MCS_VariableType vartype;
     char *name2;
     void *tmpdata;
     uint32_t tmpsize;

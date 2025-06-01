@@ -2,11 +2,12 @@
 *.o
 *.a
 tags
-.vscode
+.cache
 obj
 dist
-*.hhk
-*.bin
+compile_commands.json
+*.hh3
+*.elf
 
 # OS items
 .DS_Store

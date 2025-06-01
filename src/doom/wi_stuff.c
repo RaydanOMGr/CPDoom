@@ -1422,7 +1422,7 @@ void WI_loadData(void)
 {
     int		i;
     int		j;
-    char	name[9];
+    char	name[33];
     anim_t*	a;
 
     if (gamemode == commercial)
@@ -1459,7 +1459,7 @@ void WI_loadData(void)
 				       PU_STATIC, 0);
 	for (i=0 ; i<NUMCMAPS ; i++)
 	{								
-	    sprintf(name, "CWILV%2.2d", i);
+	    snprintf(name, sizeof(name), "CWILV%02d", i);
 	    lnames[i] = W_CacheLumpName(name, PU_STATIC);
 	}					
     }
@@ -1469,7 +1469,7 @@ void WI_loadData(void)
 				       PU_STATIC, 0);
 	for (i=0 ; i<NUMMAPS ; i++)
 	{
-	    sprintf(name, "WILV%d%d", wbs->epsd, i);
+	    snprintf(name, sizeof(name), "WILV%d%d", wbs->epsd, i);
 	    lnames[i] = W_CacheLumpName(name, PU_STATIC);
 	}
 
@@ -1493,7 +1493,7 @@ void WI_loadData(void)
 		    if (wbs->epsd != 1 || j != 8) 
 		    {
 			// animations
-			sprintf(name, "WIA%d%.2d%.2d", wbs->epsd, j, i);  
+			snprintf(name, sizeof(name), "WIA%d%.2d%.2d", wbs->epsd, j, i);  
 			a->p[i] = W_CacheLumpName(name, PU_STATIC);
 		    }
 		    else

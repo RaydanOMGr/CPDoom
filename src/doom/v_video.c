@@ -551,7 +551,7 @@ void V_Cleanup (void)
 {
     // This frees all other screens as well, as they were allocated together
     printf("V_Cleanup: Free screen memory\n");
-    free(screens[0]);
+    free(screens[1]);
 }
 
 //

@@ -1,10 +1,12 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <sdk/calc/calc.hpp>
-#include <sdk/os/input.hpp>
+#include <sdk/calc/calc.h>
+#include <sdk/os/input.h>
 
 #include "doomdef.h"
 #include "d_event.h"
+
+#undef KEY_EQUALS
 
 uint32_t previousKey1 = 0;
 uint32_t previousKey2 = 0;
@@ -145,8 +147,12 @@ boolean I_GetKeyEvent(event_t *ev)
         return true;
     }
 
-    // Backspace
-    if (I_CheckKey((Keys1)0x00000080, deltaKey1, KEY_BACKSPACE, ev))
+    if (I_CheckKey(
+        #pragma push_macro("KEY_BACKSPACE")
+        #undef KEY_BACKSPACE
+        KEY_BACKSPACE,
+        #pragma pop_macro("KEY_BACKSPACE")
+        deltaKey1, KEY_BACKSPACE, ev))
     {
         return true;
     }
@@ -171,8 +177,7 @@ boolean I_GetKeyEvent(event_t *ev)
         return true;
     }
 
-    // Equals
-    if (I_CheckKey((Keys2)0x00000080, deltaKey2, '=', ev))
+    if (I_CheckKey(KEY_EQUALS, deltaKey2, '=', ev))
     {
         return true;
     }
