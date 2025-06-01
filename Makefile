@@ -2,33 +2,31 @@
 # The .hhk file is the original format, the bin file is a newer format.
 APP_NAME:=CPDoom
 
-ifndef SDK_DIR
-$(error You need to define the SDK_DIR environment variable, and point it to the sdk/ folder)
-endif
+SDK_DIR?=/sdk
 
-AS:=sh4aeb-elf-gcc
-AS_FLAGS:=-DAPPNAME_STRING=\"$(APP_NAME)\"
+AS:=sh4a_nofpueb-elf-gcc
+AS_FLAGS:=
 
-COMMON_FLAGS:=-flto -fno-strict-aliasing -ffast-math -ffunction-sections -fdata-sections -ffreestanding -fshort-wchar -O2 -gdwarf-5 -m4a-nofpu -DAPPNAME_STRING=\"$(APP_NAME)\"
+COMMON_FLAGS:=-Ofast -gdwarf-5 -ffunction-sections -fdata-sections -flto=auto -ffat-lto-objects -fno-strict-aliasing
 INCLUDES:=-I $(SDK_DIR)/include/
-WARNINGS:=-Wall -Wextra -Werror -Wno-missing-field-initializers
+WARNINGS:=-Wall -Wextra -Werror -Wno-missing-field-initializers -Wno-alloc-size-larger-than
 
-CC:=sh4aeb-elf-gcc
-CC_FLAGS:=$(COMMON_FLAGS) $(INCLUDES) $(WARNINGS)
+CC:=sh4a_nofpueb-elf-gcc
+CC_FLAGS:=$(COMMON_FLAGS) $(INCLUDES) $(WARNINGS) -std=gnu18
 
-CXX:=sh4aeb-elf-g++
-CXX_FLAGS:=-fno-exceptions -fno-rtti $(COMMON_FLAGS) $(INCLUDES) $(WARNINGS)
+CXX:=sh4a_nofpueb-elf-g++
+CXX_FLAGS:=-fno-exceptions -fno-rtti $(COMMON_FLAGS) $(INCLUDES) $(WARNINGS) -std=gnu++20
 
-LD:=sh4aeb-elf-g++
-LD_FLAGS:=-m4a-nofpu -Wl,--gc-sections $(COMMON_FLAGS)
+LD:=$(CXX)
+LD_FLAGS:=$(COMMON_FLAGS) $(WARNINGS) -Wl,-Ttext-segment,0x8C052800 -Wl,--section-start,.end_mem=8cfefffc -Wno-undef -Wl,--gc-sections -fno-lto #-v
 
-READELF:=sh4aeb-elf-readelf
-OBJCOPY:=sh4aeb-elf-objcopy
+READELF:=sh4a_nofpueb-elf-readelf
+OBJCOPY:=sh4a_nofpueb-elf-objcopy
+STRIP:=sh4a_nofpueb-elf-strip
 
 SOURCEDIR = src
 BUILDDIR = obj
 OUTDIR = dist
-BINDIR = $(OUTDIR)/$(APP_NAME)/bin
 
 AS_SOURCES:=$(shell find $(SOURCEDIR) -name '*.S')
 CC_SOURCES:=$(shell find $(SOURCEDIR) -name '*.c')
@@ -37,36 +35,31 @@ OBJECTS := $(addprefix $(BUILDDIR)/,$(AS_SOURCES:.S=.o)) \
 	$(addprefix $(BUILDDIR)/,$(CC_SOURCES:.c=.o)) \
 	$(addprefix $(BUILDDIR)/,$(CXX_SOURCES:.cpp=.o))
 
+APP_HH3:=$(OUTDIR)/$(APP_NAME).hh3
 APP_ELF:=$(OUTDIR)/$(APP_NAME).elf
-APP_BIN:=$(OUTDIR)/$(APP_NAME).bin
-MAIN_BIN:=$(BINDIR)/main.bin
 
-bin: $(APP_BIN) $(MAIN_BIN) Makefile
+.DEFAULT_GOAL=all
 
-hhk: $(APP_ELF) Makefile
+hh3: $(APP_HH3) Makefile
+elf: $(APP_ELF) Makefile
 
-all: $(APP_ELF) $(APP_BIN) $(MAIN_BIN) Makefile
+all: $(APP_ELF) $(APP_HH3) Makefile
 
 clean:
 	rm -rf $(BUILDDIR) $(OUTDIR)
 
-$(APP_BIN): $(APP_ELF)
-	$(OBJCOPY) --remove-section=.text* --remove-section=.rodata* --remove-section=.bss* --remove-section=.eh_frame* --remove-section=.oc_mem* --output-target=binary $(APP_ELF) $@
+%.hh3: %.elf
+	$(STRIP) -o $@ $^
 
-$(MAIN_BIN): $(APP_ELF)
+$(APP_ELF): $(OBJECTS) $(SDK_DIR)/libsdk.a
 	mkdir -p $(dir $@)
-	$(OBJCOPY) --only-section=.text* --only-section=.rodata* --only-section=.bss* --set-section-flags .bss*=alloc,load,contents --output-target=binary $(APP_ELF) $@
-
-$(APP_ELF): $(OBJECTS) $(SDK_DIR)/libsdk.a linker.ld
-	mkdir -p $(dir $@)
-	$(LD) -T linker.ld -Wl,-Map $@.map -o $@ $(LD_FLAGS) $(OBJECTS) -L$(SDK_DIR) -lsdk
-	-@echo "note: -fno-strict-aliasing was used"
+	$(LD) -Wl,-Map $@.map -o $@ $(LD_FLAGS) $(OBJECTS) -L$(SDK_DIR) -lsdk
 
 # We're not actually building sdk.o, just telling the user they need to do it
 # themselves. Just using the target to trigger an error when the file is
 # required but does not exist.
 $(SDK_DIR)/libsdk.a:
-	@echo "ERROR: You need to build the SDK before using it. Run make in the SDK directory, and check the README.md in the SDK directory for more information" 1>&2 && exit 1
+	@echo "You need to build the SDK before using it. Run make in the SDK directory, and check the README.md in the SDK directory for more information" && exit 1
 
 $(BUILDDIR)/%.o: %.S
 	mkdir -p $(dir $@)
@@ -84,6 +77,5 @@ $(BUILDDIR)/%.o: %.c
 $(BUILDDIR)/%.o: %.cpp
 	mkdir -p $(dir $@)
 	$(CXX) -c $< -o $@ $(CXX_FLAGS)
-	@$(READELF) $@ -S | grep ".ctors" > /dev/null && echo "ERROR: Global constructors aren't supported." && rm $@ && exit 1 || exit 0
 
-.PHONY: bin hhk all clean
+.PHONY: elf hh3 all clean

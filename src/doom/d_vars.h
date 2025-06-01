@@ -329,7 +329,6 @@ typedef struct
 
     struct
     {
-        unsigned short cas_colors[256];
         boolean shmFinished;
     } i_video;
 
@@ -1471,7 +1470,6 @@ void D_VarsCleanup();
 // end of i_system
 
 // i_video
-#define cas_colors   VAR_REPLACE(i_video, cas_colors)
 // end of i_video
 
 // m_argv

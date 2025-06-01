@@ -22,6 +22,8 @@
 //-----------------------------------------------------------------------------
 
 
+#include <limits.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -31,6 +33,9 @@
 
 #include <stdarg.h>
 
+#include <sdk/os/lcd.h>
+#include <sdk/calc/calc.h>
+
 #include "doomstat.h"
 #include "d_vars.h"
 #include "i_system.h"
@@ -38,24 +43,12 @@
 #include "v_video.h"
 #include "m_argv.h"
 #include "d_main.h"
-#include "../cas/cpu/dmac.h"
 
 #include "doomdef.h"
 
 #define POINTER_WARP_COUNTDOWN	1
 
-#define CAS_FRAMEBUFFER ((short *)0x8C000000)
-#define CAS_LCD_REFRESH ((void (*)(void))0x8003733E)
-
-#define LINE_SIZE 1024
-
-#define RGB_TO_RGB565(r, g, b) ( \
-	((r & 0x1F) << 11) | \
-	((g & 0x3F) << 5) | \
-	(b & 0x1F) \
-)
-
-uint16_t line[LINE_SIZE] __attribute__((section(".oc_mem.x.data")));
+typeof(*vram) cas_colors[sizeof(**screens) * ((1ul << CHAR_BIT) - 1)] __attribute__((section(".oc_mem.x.data")));
 
 void I_ShutdownGraphics(void)
 {
@@ -123,16 +116,17 @@ void I_FinishUpdate (void)
             screens[0][ (SCREENHEIGHT-1)*SCREENWIDTH + i] = 0x0;
     }
 
+    LCD_SetDrawingBounds(0, SCREENWIDTH - 1, (height - SCREENHEIGHT) / 2, (height + SCREENHEIGHT) / 2 - 1);
+    LCD_SendCommand(COMMAND_PREPARE_FOR_DRAW_DATA);
+    // maybe async dmac 2k chunks here? (compute from table while copying in the background)
     for (short y = 0; y < SCREENHEIGHT; y++)
     {
         for (short x = 0; x < SCREENWIDTH; x++) 
         {
             size_t pixel = (y * SCREENWIDTH) + x;
-            CAS_FRAMEBUFFER[pixel] = cas_colors[screens[0][pixel]];
+            *lcd_data_port = cas_colors[screens[0][pixel]];
         }
     }
-
-    CAS_LCD_REFRESH();
 }
 
 
@@ -149,7 +143,7 @@ void I_ReadScreen (byte* scr)
 //
 void I_SetPalette (byte* palette)
 {
-    for (short i = 0; i < 256; i++)
+    for (size_t i = 0; i < sizeof(cas_colors) / sizeof(*cas_colors); i++)
     {
         byte red = ((gammatable[usegamma][*palette++] * 0x20) / 0x100);
         byte green = ((gammatable[usegamma][*palette++] * 0x40) / 0x100);
